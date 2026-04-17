@@ -97,9 +97,9 @@ jobs:
           if [ ${{ github.event.inputs.LIBPOSTPROC_REMOVED }} == true ]; then
             sed -i '/--disable-postproc/d' build_ffmpeg.sh
           fi
-          # -fPIC обязателен: .a файлы будут линковаться в .so (libffmpeg_video_jni.so)
-          # Без него линкер падает с "relocation R_AARCH64_ADR_PREL_PG_HI21 cannot be used"
-          sed -i 's/--disable-vulkan/--disable-vulkan \\\n    --extra-cflags=-fPIC/' build_ffmpeg.sh
+          # Добавляем --disable-asm чтобы отключить NEON ассемблерные модули
+          # которые содержат non-PIC релокации и не могут линковаться в .so
+          sed -i '/--disable-vulkan/a\    --disable-asm' build_ffmpeg.sh
           ./build_ffmpeg.sh "${FFMPEG_MODULE_PATH}" "${NDK_PATH}" "${HOST_PLATFORM}" "${ANDROID_ABI}" "${ENABLED_DECODERS[@]}"
 
       - name: Build FFmpeg aar
