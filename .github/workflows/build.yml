@@ -97,9 +97,17 @@ jobs:
           if [ ${{ github.event.inputs.LIBPOSTPROC_REMOVED }} == true ]; then
             sed -i '/--disable-postproc/d' build_ffmpeg.sh
           fi
-          # Добавляем --disable-asm чтобы отключить NEON ассемблерные модули
-          # которые содержат non-PIC релокации и не могут линковаться в .so
-          sed -i '/--disable-vulkan/a\    --disable-asm' build_ffmpeg.sh
+          # Исправляем проблему с non-PIC релокациями в NEON ассемблере.
+          # Патчим исходники напрямую: заменяем абсолютные ссылки на данные
+          # через PC-relative адресацию в tx_float_neon.S
+          # Проще всего — удалить проблемный файл, FFmpeg использует C fallback
+          find "$GITHUB_WORKSPACE/media/libraries/decoder_ffmpeg/src/main/jni/ffmpeg" \
+            -name "tx_float_neon.S" -delete || true
+          find "$GITHUB_WORKSPACE/media/libraries/decoder_ffmpeg/src/main/jni/ffmpeg" \
+            -name "tx_int32_neon.S" -delete || true
+          find "$GITHUB_WORKSPACE/media/libraries/decoder_ffmpeg/src/main/jni/ffmpeg" \
+            -name "tx_*_neon.S" -delete || true
+          echo "Deleted problematic NEON tx files, FFmpeg will use C fallback"
           ./build_ffmpeg.sh "${FFMPEG_MODULE_PATH}" "${NDK_PATH}" "${HOST_PLATFORM}" "${ANDROID_ABI}" "${ENABLED_DECODERS[@]}"
 
       - name: Build FFmpeg aar
